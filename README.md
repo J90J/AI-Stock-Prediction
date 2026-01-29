@@ -38,9 +38,9 @@ One of the biggest hurdles was data availability. While basic price data is free
     ```
 
 2.  **Run the Demo**:
-    The demo script handles everything (data downloading + prediction + sentiment analysis).
+    The application provides a web interface for data downloading, prediction, and sentiment analysis.
     ```bash
-    python demo/demo.py
+    python3 -m streamlit run streamlit_app.py
     ```
     This will:
     *   **Download** the latest Palantir and NASDAQ data automatically.
