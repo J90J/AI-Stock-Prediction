@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-class PalantirLSTM(nn.Module):
+class StockLSTM(nn.Module):
     def __init__(self, input_size=18, hidden_size=64, num_layers=2, dropout=0.2):
         """
         input_size : number of input features per timestep

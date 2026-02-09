@@ -13,7 +13,7 @@ from src.utils import (
     load_ticker, compute_RSI, compute_MACD, compute_bollinger_width,
     compute_ROC, compute_ATR, compute_stochastic_k, make_sequences
 )
-from src.model import PalantirLSTM
+from src.model import StockLSTM
 
 # Constants
 LOOKBACK = 60
@@ -23,33 +23,32 @@ NUM_LAYERS = 2
 LEARNING_RATE = 0.001
 EPOCHS = 50
 
-def train(data_dir, output_dir):
+def train_model(ticker, data_dir, output_dir, epochs=50):
     data_path = pathlib.Path(data_dir)
     output_path = pathlib.Path(output_dir)
     output_path.mkdir(exist_ok=True, parents=True)
 
     # 1. Load Data
-    pltr_path = data_path / "PLTR_2025-12-04.csv"
-    ixic_path = data_path / "IXIC_2025-12-04.csv"
+    stock_path = data_path / f"{ticker}_current.csv"
+    ixic_path = data_path / "IXIC_current.csv"
 
-    if not pltr_path.exists() or not ixic_path.exists():
+    if not stock_path.exists() or not ixic_path.exists():
         print(f"Error: Data files not found in {data_dir}")
-        print(f"Expected: {pltr_path} and {ixic_path}")
-        print("Please place the CSV files in the data directory.")
+        print(f"Expected: {stock_path} and {ixic_path}")
         return
 
-    print("Loading data...")
-    pltr_df, _ = load_ticker(pltr_path)
+    print(f"Loading data for {ticker}...")
+    stock_df, _ = load_ticker(stock_path)
     nasdaq_df, _ = load_ticker(ixic_path)
 
     print("Processing features...")
-    pltr_df["Date"] = pd.to_datetime(pltr_df["Date"])
+    stock_df["Date"] = pd.to_datetime(stock_df["Date"])
     nasdaq_df["Date"] = pd.to_datetime(nasdaq_df["Date"])
-    pltr_df = pltr_df.sort_values("Date").reset_index(drop=True)
+    stock_df = stock_df.sort_values("Date").reset_index(drop=True)
     nasdaq_df = nasdaq_df.sort_values("Date").reset_index(drop=True)
 
     # Merge
-    merged = pltr_df.merge(
+    merged = stock_df.merge(
         nasdaq_df[["Date", "Close", "Volume"]].rename(
             columns={"Close": "NAS_Close", "Volume": "NAS_Volume"}
         ),
@@ -124,7 +123,7 @@ def train(data_dir, output_dir):
     train_loader = DataLoader(train_ds, batch_size=BATCH_SIZE, shuffle=True)
 
     # Initialize Model
-    model = PalantirLSTM(
+    model = StockLSTM(
         input_size=len(feature_cols),
         hidden_size=HIDDEN_SIZE,
         num_layers=NUM_LAYERS,
@@ -136,8 +135,8 @@ def train(data_dir, output_dir):
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     # Training Loop
-    print(f"Starting training for {EPOCHS} epochs...")
-    for epoch in range(EPOCHS):
+    print(f"Starting training for {epochs} epochs...")
+    for epoch in range(epochs):
         model.train()
         total_loss = 0.0
         num_batches = 0
@@ -165,14 +164,18 @@ def train(data_dir, output_dir):
             print(f"Epoch {epoch+1}/{EPOCHS} - Loss: {avg_loss:.4f}")
 
     # Save Model
-    model_path = output_path / "palantir_lstm.pth"
+    model_path = output_path / f"{ticker}_lstm.pth"
     torch.save(model.state_dict(), model_path)
     print(f"Model saved to {model_path}")
+    
+    return model, feature_scaler, close_scaler, device
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Train stock prediction model")
+    parser.add_argument("--ticker", type=str, default="PLTR", help="Stock ticker symbol")
     parser.add_argument("--data_dir", type=str, default="data", help="Path to data directory")
     parser.add_argument("--output_dir", type=str, default="checkpoints", help="Path to save checkpoints")
+    parser.add_argument("--epochs", type=int, default=50, help="Number of training epochs")
     args = parser.parse_args()
 
-    train(args.data_dir, args.output_dir)
+    train_model(args.ticker, args.data_dir, args.output_dir, args.epochs)

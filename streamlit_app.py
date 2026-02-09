@@ -10,16 +10,17 @@ import sys
 # Add project root to path
 sys.path.append(str(pathlib.Path(__file__).parent))
 
-from src.model import PalantirLSTM
+from src.model import StockLSTM
 from src.utils import (
     load_ticker, compute_RSI, compute_MACD, compute_bollinger_width,
     compute_ROC, compute_ATR, compute_stochastic_k
 )
 from src.fetch_data import fetch_all_data
+from src.main import train_model
 from src.sentiment import get_current_sentiment
 
 # Set page config
-st.set_page_config(page_title="PLTR Stock AI", page_icon="📈", layout="wide")
+st.set_page_config(page_title="AI Stock Predictor", page_icon="📈", layout="wide")
 
 # Constants
 LOOKBACK = 60
@@ -33,11 +34,11 @@ FEATURE_COLS = [
 ]
 
 @st.cache_resource
-def load_resources(checkpoints_dir):
+def load_resources(ticker, checkpoints_dir):
     checkpoints_path = pathlib.Path(checkpoints_dir)
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
-    model_path = checkpoints_path / "palantir_lstm.pth"
+    model_path = checkpoints_path / f"{ticker}_lstm.pth"
     feature_scaler_path = checkpoints_path / "feature_scaler.pkl"
     
     if not model_path.exists() or not feature_scaler_path.exists():
@@ -47,7 +48,7 @@ def load_resources(checkpoints_dir):
     feature_scaler = joblib.load(feature_scaler_path)
     
     # Load Model
-    model = PalantirLSTM(
+    model = StockLSTM(
         input_size=len(FEATURE_COLS),
         hidden_size=HIDDEN_SIZE,
         num_layers=NUM_LAYERS
@@ -57,25 +58,25 @@ def load_resources(checkpoints_dir):
     
     return model, feature_scaler, device
 
-def run_inference(data_dir, model, feature_scaler, device):
+def run_inference(ticker, data_dir, model, feature_scaler, device):
     data_path = pathlib.Path(data_dir)
-    pltr_path = data_path / "PLTR_current.csv"
+    stock_path = data_path / f"{ticker}_current.csv"
     ixic_path = data_path / "IXIC_current.csv"
 
-    if not pltr_path.exists():
+    if not stock_path.exists():
         return None, "Data files not found. Please fetch data first."
 
     # Load Data
-    pltr_df, _ = load_ticker(pltr_path)
+    stock_df, _ = load_ticker(stock_path)
     nasdaq_df, _ = load_ticker(ixic_path)
 
     # Feature Engineer
-    pltr_df["Date"] = pd.to_datetime(pltr_df["Date"])
+    stock_df["Date"] = pd.to_datetime(stock_df["Date"])
     nasdaq_df["Date"] = pd.to_datetime(nasdaq_df["Date"])
-    pltr_df = pltr_df.sort_values("Date").reset_index(drop=True)
+    stock_df = stock_df.sort_values("Date").reset_index(drop=True)
     nasdaq_df = nasdaq_df.sort_values("Date").reset_index(drop=True)
 
-    merged = pltr_df.merge(
+    merged = stock_df.merge(
         nasdaq_df[["Date", "Close", "Volume"]].rename(columns={"Close": "NAS_Close", "Volume": "NAS_Volume"}),
         on="Date", how="inner"
     )
@@ -125,46 +126,60 @@ def run_inference(data_dir, model, feature_scaler, device):
     }, None
 
 # UI Layout
-st.title("Palantir (PLTR) Stock Predictor 🤖")
-st.markdown("Hybrid LSTM + Sentiment Analysis System")
+st.title("AI Stock Predictor 🤖")
+st.markdown("Hybrid LSTM + Sentiment Analysis System for Any Stock")
 
 # Sidebar
 st.sidebar.header("Configuration")
+ticker = st.sidebar.text_input("Stock Ticker", value="PLTR").upper()
 data_dir = st.sidebar.text_input("Data Directory", "data")
 checkpoints_dir = st.sidebar.text_input("Checkpoints Directory", "checkpoints")
 
+# Usage Guide in Sidebar
+with st.sidebar.expander("ℹ️ How to Use", expanded=True):
+    st.markdown("""
+    1. **Enter Ticker**: Type a stock symbol (e.g., AAPL, NVDA, TSLA).
+    2. **Fetch data**: Click the button below to download the latest data and **retrain** the model for this specific stock.
+    3. **Wait**: Training takes ~30-60 seconds.
+    4. **Analyze**: View predictions and sentiment.
+    """)
+
 # Main execution safely wrapped
 try:
-    if st.sidebar.button("Fetch Latest Data"):
-        with st.spinner("Downloading data from Yahoo Finance..."):
+    if st.sidebar.button("Fetch Data & Retrain Model"):
+        with st.spinner(f"Downloading {ticker} data and Retraining Model... This may take a minute."):
             try:
-                fetch_all_data(data_dir)
-                st.sidebar.success("Data updated!")
+                # 1. Fetch Data
+                fetch_all_data(ticker, data_dir)
+                
+                # 2. Retrain Model
+                train_model(ticker, data_dir, checkpoints_dir, epochs=50)
+                
+                # 3. Clear Cache to reload new model
+                st.cache_resource.clear()
+                
+                st.sidebar.success(f"Model retrained for {ticker}!")
+                st.rerun()
             except Exception as e:
-                st.sidebar.error(f"Error fetching data: {e}")
+                st.sidebar.error(f"Error during update: {e}")
 
     # Auto-download if missing
-    pltr_path = pathlib.Path(data_dir) / "PLTR_current.csv"
-    if not pltr_path.exists():
-        with st.spinner("Data not found. Downloading automatically..."):
-            try:
-                fetch_all_data(data_dir)
-                st.success("Data downloaded successfully!")
-            except Exception as e:
-                st.error(f"Failed to auto-download data: {e}")
+    stock_path = pathlib.Path(data_dir) / f"{ticker}_current.csv"
+    if not stock_path.exists():
+        st.warning(f"No data found for {ticker}. Please click 'Fetch Data & Retrain Model' in the sidebar.")
+        st.stop()
 
     try:
-        model, scaler, device = load_resources(checkpoints_dir)
+        model, scaler, device = load_resources(ticker, checkpoints_dir)
     except Exception as e:
         st.error(f"Failed to load model/resources: {e}")
-        st.info("Ensure that 'checkpoints/' directory exists and contains 'palantir_lstm.pth' and 'feature_scaler.pkl'.")
         st.stop()
 
     if model is None:
-        st.error("Model or Scaler not found in checkpoints directory. Please train the model first.")
+        st.warning(f"Model for {ticker} not found. Please click 'Fetch Data & Retrain Model' to initialize.")
     else:
         # Run Inference
-        res, error = run_inference(data_dir, model, scaler, device)
+        res, error = run_inference(ticker, data_dir, model, scaler, device)
         
         if error:
             st.warning(error)
@@ -172,8 +187,8 @@ try:
                 st.info("Try clicking 'Fetch Latest Data' in the sidebar.")
         else:
             # Sentiment Analysis
-            with st.spinner("Analyzing News Sentiment..."):
-                sentiment = get_current_sentiment("PLTR")
+            with st.spinner(f"Analyzing {ticker} News Sentiment..."):
+                sentiment = get_current_sentiment(ticker)
             
             col1, col2, col3 = st.columns(3)
             
@@ -218,7 +233,7 @@ try:
             pred_date = res['last_date'] + pd.Timedelta(days=1)
             ax.scatter(pred_date, res['next_close_pred'], color="red", label="Prediction", marker="x", s=150, zorder=5)
             
-            ax.set_title(f"Palantir Hybrid Forecast")
+            ax.set_title(f"{ticker} Hybrid Forecast")
             ax.set_xlabel("Date")
             ax.set_ylabel("Price (USD)")
             ax.legend()

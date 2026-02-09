@@ -1,80 +1,76 @@
-# Palantir Stock Prediction with LSTM
+# AI Stock Prediction with LSTM + Sentiment
 
 ## Introduction
-For my final project, I explored whether a "Hybrid" approach—combining traditional Deep Learning with modern Sentiment Analysis—could better predict Palantir's (PLTR) stock price. Palantir is often driven by retail interactions and news cycles as much as technical fundamentals, so verifying standard technicals against news sentiment felt like a necessary step for accurate prediction.
 
-My system uses an LSTM neural network to analyze 60 days of price/volume history to determine the technical trend, and then cross-references that with real-time news sentiment (analyzed via VADER) to generate a final trading recommendation.
+This project is an **AI-powered stock prediction system** that combines traditional Deep Learning with modern Sentiment Analysis. It is designed to work with **any stock ticker** (e.g., PLTR, AAPL, NVDA), allowing users to dynamically train models and generate predictions for their chosen companies.
 
-## Challenges & Design Decisions
-One of the biggest hurdles was data availability. While basic price data is free, obtaining historical news data for training is prohibitively expensive.
-*   **Hybrid Inference**: Since I couldn't train the model on years of news history, I opted for a hybrid inference approach. The model predicts the *Technical* direction, and the Sentiment Engine acts as a "filter" or "confirming signal" based on *today's* news.
-*   **Sentiment Granularity**: I chose VADER over transformer-based models (like BERT) because financial headlines are often short and direct, where VADER's rule-based approach performs efficiently without needing a heavy GPU for just text processing.
+The system uses an LSTM neural network to analyze 60 days of price/volume history to determine the technical trend, and then cross-references that with real-time news sentiment (analyzed via VADER) to generate a final trading recommendation.
+
+## Features
+
+* **Universal Stock Support**: Enter any ticker symbol to download data and generate predictions.
+* **Automated Retraining**: The system automatically retrains the AI model on the new stock's data to ensure accuracy.
+* **Hybrid Inference**: Combines technical analysis (LSTM) with news sentiment (VADER).
+* **Interactive UI**: A Streamlit-based web interface for easy interaction.
 
 ## Directory Structure
+
 ```
 ├── README.md           # This file
 ├── requirements.txt    # Python dependencies
 ├── src/
-│   ├── main.py         # Training script
+│   ├── main.py         # Training script (callable)
 │   ├── model.py        # LSTM model definition
 │   ├── utils.py        # Helper functions (data loading, indicators)
-├── data/               # Place your CSV data files here
+│   ├── fetch_data.py   # Data downloading logic
+│   ├── sentiment.py    # VADER sentiment analysis
+├── data/               # CSV data files (auto-generated)
 ├── checkpoints/        # Saved models and scalers
 ├── demo/
-│   ├── demo.py         # Demo script for inference
+│   ├── demo.py         # Legacy demo script
 └── results/            # Generated plots and predictions
 ```
 
-## New Key Features
-*   **Automated Data Fetching**: No need to manually download CSVs. The system grabs the latest data from `yfinance`.
-*   **News Sentiment Engine**: Analyzes real-time news headlines to determine market sentiment (Positive/Negative).
-*   **Hybrid "Smart Advisor"**: Combines the LSTM model's technical prediction with news sentiment for a final "Strong Buy/Sell" recommendation.
-
 ## Setup Instructions
 
-1.  **Install Dependencies**:
+1. **Install Dependencies**:
+
     ```bash
     pip install -r requirements.txt
     ```
 
-2.  **Run the Demo**:
-    The application provides a web interface for data downloading, prediction, and sentiment analysis.
-    ```bash
-    python3 -m streamlit run streamlit_app.py
-    ```
-    This will:
-    *   **Download** the latest Palantir and NASDAQ data automatically.
-    *   **Run Inference** using the trained LSTM model.
-    *   **Analyze News** headlines for sentiment.
-    *   **Generate Report** with a final verdict and plot.
+2. **Run the App**:
 
-## Training (Optional)
-If you want to re-train the model yourself:
-1.  Download fresh data:
     ```bash
-    python src/fetch_data.py
-    ```
-2.  Run the training script:
-    ```bash
-    python src/main.py
+    streamlit run streamlit_app.py
     ```
 
-*   **Hyperparameters**:
-    *   Lookback Window: 60 days
-    *   Hidden Size: 64
-    *   Layers: 2
-    *   Dropout: 0.2
-    *   Learning Rate: 0.001
-    *   Epochs: 50
-    *   Batch Size: 32
-*   **Random Seed**: While PyTorch seeds are not explicitly fixed in this version, the training process is stable. For strict determinism, set torch/numpy seeds at the start of `src/main.py`.
+3. **Using the App**:
+    1. **Enter Ticker**: Type a stock symbol (e.g., `NVDA`) in the sidebar.
+    2. **Fetch & Train**: Click **"Fetch Data & Retrain Model"**.
+    3. **Wait**: The app will download latest data and train a fresh model (~30-60s).
+    4. **Analyze**: View the predicted price, technical signal, and news sentiment.
 
-## Model Information
-*   **Architecture**: Multi-layer LSTM with two heads:
-    1.  **Regression Head**: Predicts the continuous return.
-    2.  **Classification Head**: Predicts the probability of the price moving UP.
-*   **Features**: OHLCV data + Technical Indicators (RSI, MACD, BB, ROC, ATR, Stochastic Oscillator) + NASDAQ Index correlations.
+## Training (Manual)
+
+The app handles training automatically, but you can also run it manually:
+
+```bash
+# Fetch data for a specific ticker
+python -c "from src.fetch_data import fetch_all_data; fetch_all_data('AAPL')"
+
+# Train model for that ticker
+python src/main.py --ticker AAPL --epochs 50
+```
+
+## Model Architecture
+
+* **Input**: 60 days of OHLCV data + Technical Indicators (RSI, MACD, BB, ROC, ATR, Stochastic Oscillator) + NASDAQ Index correlations.
+* **Model**: Multi-layer LSTM with 2 heads:
+    1. **Regression Head**: Predicts the next day's return.
+    2. **Classification Head**: Predicts the probability of the price moving UP.
 
 ## Acknowledgments
-*   Data sourced from Yahoo Finance.
-*   Built with PyTorch.
+
+* Data sourced from Yahoo Finance.
+* Built with PyTorch.

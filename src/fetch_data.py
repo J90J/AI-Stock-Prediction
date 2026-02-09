@@ -2,28 +2,32 @@ import yfinance as yf
 import pandas as pd
 import pathlib
 
-def fetch_all_data(data_dir="data"):
+def fetch_all_data(ticker="PLTR", data_dir="data"):
     """
-    Downloads full historical data for PLTR and ^IXIC using yfinance.
-    Saves them to PLTR_current.csv and IXIC_current.csv in data_dir.
+    Downloads full historical data for a specific ticker and ^IXIC using yfinance.
+    Saves them to {ticker}_current.csv and IXIC_current.csv in data_dir.
     """
     data_path = pathlib.Path(data_dir)
     data_path.mkdir(exist_ok=True, parents=True)
 
-    print("Downloading latest data from Yahoo Finance...")
+    print(f"Downloading latest data for {ticker} from Yahoo Finance...")
 
-    # 1. Palantir
-    print("Fetching PLTR...")
-    pltr = yf.Ticker("PLTR")
-    pltr_hist = pltr.history(period="max")
-    # yfinance returns index as Datetime, reset to get 'Date' column
-    pltr_hist = pltr_hist.reset_index()
-    # Format Date to YYYY-MM-DD for consistency
-    pltr_hist["Date"] = pltr_hist["Date"].dt.strftime("%Y-%m-%d")
+    # 1. Target Stock
+    print(f"Fetching {ticker}...")
+    stock = yf.Ticker(ticker)
+    stock_hist = stock.history(period="max")
     
-    pltr_file = data_path / "PLTR_current.csv"
-    pltr_hist.to_csv(pltr_file, index=False)
-    print(f"Saved PLTR data to {pltr_file} ({len(pltr_hist)} rows)")
+    if stock_hist.empty:
+        raise ValueError(f"No data found for ticker symbol '{ticker}'")
+
+    # yfinance returns index as Datetime, reset to get 'Date' column
+    stock_hist = stock_hist.reset_index()
+    # Format Date to YYYY-MM-DD for consistency
+    stock_hist["Date"] = stock_hist["Date"].dt.strftime("%Y-%m-%d")
+    
+    stock_file = data_path / f"{ticker}_current.csv"
+    stock_hist.to_csv(stock_file, index=False)
+    print(f"Saved {ticker} data to {stock_file} ({len(stock_hist)} rows)")
 
     # 2. NASDAQ (IVIC)
     print("Fetching ^IXIC (NASDAQ)...")

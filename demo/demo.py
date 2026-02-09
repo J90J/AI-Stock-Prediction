@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 # Add project root to path
 sys.path.append(str(pathlib.Path(__file__).parent.parent))
 
-from src.model import PalantirLSTM
+from src.model import StockLSTM
 from src.utils import (
     load_ticker, compute_RSI, compute_MACD, compute_bollinger_width,
     compute_ROC, compute_ATR, compute_stochastic_k
@@ -27,43 +27,44 @@ FEATURE_COLS = [
     "NAS_Close", "NAS_Volume", "NAS_ret_1", "NAS_ret_5"
 ]
 
-def run_demo(data_dir, checkpoints_dir, results_dir):
+def run_demo(ticker, data_dir, checkpoints_dir, results_dir):
     data_path = pathlib.Path(data_dir)
     checkpoints_path = pathlib.Path(checkpoints_dir)
     results_path = pathlib.Path(results_dir)
     results_path.mkdir(exist_ok=True, parents=True)
 
     # Check for resources
-    model_path = checkpoints_path / "palantir_lstm.pth"
+    model_path = checkpoints_path / f"{ticker}_lstm.pth"
     feature_scaler_path = checkpoints_path / "feature_scaler.pkl"
-    close_scaler_path = checkpoints_path / "close_scaler.pkl"
-    pltr_path = data_path / "PLTR_2025-12-04.csv"
-    ixic_path = data_path / "IXIC_2025-12-04.csv"
+    # close_scaler_path = checkpoints_path / "close_scaler.pkl" 
+    
+    # We need to fetch data first if not present
+    stock_path = data_path / f"{ticker}_current.csv"
+    ixic_path = data_path / "IXIC_current.csv"
 
     missing = []
     if not model_path.exists(): missing.append(str(model_path))
     if not feature_scaler_path.exists(): missing.append(str(feature_scaler_path))
-    if not pltr_path.exists(): missing.append(str(pltr_path))
 
     if missing:
         print("Error: Missing required files to run demo.")
         print("Missing:", missing)
-        print("Please train the model first by moving your data to 'data/' and running 'python src/main.py'")
+        print(f"Please train the model first using 'python src/main.py --ticker {ticker}'")
         return
 
     # Update local data cache
-    print("Auto-updating data...")
+    print(f"Auto-updating data for {ticker}...")
     from src.fetch_data import fetch_all_data
     from src.sentiment import get_current_sentiment
     
     # Optional: You can comment this out if you suspect rate limits or want to use cached data
-    fetch_all_data(str(data_path))
+    fetch_all_data(ticker, str(data_path))
 
     # Point to the NEW auto-downloaded files
-    pltr_path = data_path / "PLTR_current.csv"
+    stock_path = data_path / f"{ticker}_current.csv"
     ixic_path = data_path / "IXIC_current.csv"
     
-    if not pltr_path.exists():
+    if not stock_path.exists():
         print("Error: Data download failed.")
         return
 
@@ -75,16 +76,16 @@ def run_demo(data_dir, checkpoints_dir, results_dir):
     
     # Load Data
     print("Processing latest data...")
-    pltr_df, _ = load_ticker(pltr_path)
+    stock_df, _ = load_ticker(stock_path)
     nasdaq_df, _ = load_ticker(ixic_path)
 
     # Feature Engineer
-    pltr_df["Date"] = pd.to_datetime(pltr_df["Date"])
+    stock_df["Date"] = pd.to_datetime(stock_df["Date"])
     nasdaq_df["Date"] = pd.to_datetime(nasdaq_df["Date"])
-    pltr_df = pltr_df.sort_values("Date").reset_index(drop=True)
+    stock_df = stock_df.sort_values("Date").reset_index(drop=True)
     nasdaq_df = nasdaq_df.sort_values("Date").reset_index(drop=True)
 
-    merged = pltr_df.merge(
+    merged = stock_df.merge(
         nasdaq_df[["Date", "Close", "Volume"]].rename(columns={"Close": "NAS_Close", "Volume": "NAS_Volume"}),
         on="Date", how="inner"
     )
@@ -118,7 +119,7 @@ def run_demo(data_dir, checkpoints_dir, results_dir):
     X_input = torch.tensor(features_scaled, dtype=torch.float32).unsqueeze(0).to(device)
 
     # Load Model
-    model = PalantirLSTM(
+    model = StockLSTM(
         input_size=len(FEATURE_COLS),
         hidden_size=HIDDEN_SIZE,
         num_layers=NUM_LAYERS
@@ -138,7 +139,7 @@ def run_demo(data_dir, checkpoints_dir, results_dir):
     
     
     # Get News Sentiment
-    sentiment = get_current_sentiment("PLTR")
+    sentiment = get_current_sentiment(ticker)
     news_score = sentiment['score']
     news_verdict = sentiment['verdict']
 
@@ -158,7 +159,7 @@ def run_demo(data_dir, checkpoints_dir, results_dir):
 
     # Print Report
     print("\n" + "="*50)
-    print(f"     PALANTIR (PLTR) HYBRID REPORT     ")
+    print(f"     {ticker} HYBRID REPORT     ")
     print("="*50)
     print(f"Last Close Price:   ${last_close:.2f}")
     print(f"Predicted Return:   {pred_ret_val*100:.2f}%")
@@ -179,7 +180,7 @@ def run_demo(data_dir, checkpoints_dir, results_dir):
     plt.scatter(last_date + pd.Timedelta(days=1), next_close_pred, color="red", label="Prediction", marker="x", s=150, zorder=5)
     
     title_text = f"Pred: ${next_close_pred:.2f} | Model: {model_verdict} | News: {news_verdict}"
-    plt.title(f"Palantir Hybrid Forecast\n{title_text}", fontsize=14)
+    plt.title(f"{ticker} Hybrid Forecast\n{title_text}", fontsize=14)
     plt.xlabel("Date")
     plt.ylabel("Price (USD)")
     plt.legend()
@@ -191,9 +192,10 @@ def run_demo(data_dir, checkpoints_dir, results_dir):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument("--ticker", type=str, default="PLTR")
     parser.add_argument("--data_dir", type=str, default="data")
     parser.add_argument("--checkpoints_dir", type=str, default="checkpoints")
     parser.add_argument("--results_dir", type=str, default="results")
     args = parser.parse_args()
 
-    run_demo(args.data_dir, args.checkpoints_dir, args.results_dir)
+    run_demo(args.ticker, args.data_dir, args.checkpoints_dir, args.results_dir)
