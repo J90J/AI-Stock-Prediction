@@ -29,6 +29,8 @@ jobs:
 
       - name: Run Prediction Demo
         run: |
+          python -c "from src.fetch_data import fetch_all_data; fetch_all_data('PLTR')"
+          python src/main.py --ticker PLTR --epochs 50
           python demo/demo.py
 
       - name: Commit and Push Changes
@@ -38,8 +40,8 @@ jobs:
           
           # Check if there are changes to commit
           if [[ -n $(git status -s) ]]; then
-            git add data/ results/
-            git commit -m "Daily update: Automated prediction for $(date +'%Y-%m-%d')"
+            git add data/ results/ checkpoints/
+            git commit -m "Daily update: Automated prediction for \$(date +'%Y-%m-%d')"
             git push
           else
             echo "No changes to commit"
