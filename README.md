@@ -1,76 +1,121 @@
-# AI Stock Prediction with LSTM + Sentiment
+# AI Stock Analysis Agent — LSTM + Sentiment + Claude
 
-## Introduction
+## What is this?
 
-This project is an **AI-powered stock prediction system** that combines traditional Deep Learning with modern Sentiment Analysis. It is designed to work with **any stock ticker** (e.g., PLTR, AAPL, NVDA), allowing users to dynamically train models and generate predictions for their chosen companies.
+This project is an **AI agent** for stock market analysis. It combines a custom LSTM neural network, real-time news sentiment analysis, and Claude (Anthropic's AI) as the orchestrating brain.
 
-The system uses an LSTM neural network to analyze 60 days of price/volume history to determine the technical trend, and then cross-references that with real-time news sentiment (analyzed via VADER) to generate a final trading recommendation.
+Unlike a traditional ML dashboard with hardcoded buttons, this is a **chat-based agent**: you ask it a question, and it autonomously decides which tools to call, in what order, to answer you.
 
-## Features
+## How the Agent Works
 
-* **Universal Stock Support**: Enter any ticker symbol to download data and generate predictions.
-* **Automated Retraining**: The system automatically retrains the AI model on the new stock's data to ensure accuracy.
-* **Hybrid Inference**: Combines technical analysis (LSTM) with news sentiment (VADER).
-* **Interactive UI**: A Streamlit-based web interface for easy interaction.
-
-## Directory Structure
-
-```
-├── README.md           # This file
-├── requirements.txt    # Python dependencies
-├── src/
-│   ├── main.py         # Training script (callable)
-│   ├── model.py        # LSTM model definition
-│   ├── utils.py        # Helper functions (data loading, indicators)
-│   ├── fetch_data.py   # Data downloading logic
-│   ├── sentiment.py    # VADER sentiment analysis
-├── data/               # CSV data files (auto-generated)
-├── checkpoints/        # Saved models and scalers
-├── demo/
-│   ├── demo.py         # Legacy demo script
-└── results/            # Generated plots and predictions
+```text
+User: "Should I buy NVDA today?"
+        ↓
+Agent (Claude) decides what to do
+        ↓
+  fetch_data  →  downloads latest 5y of price history
+  train_model →  trains the LSTM on that data
+  predict     →  runs the technical price-direction forecast
+  sentiment   →  analyzes recent news headlines (VADER)
+        ↓
+Agent synthesizes all signals → final recommendation
 ```
 
-## Setup Instructions
+The agent has four tools built on the existing ML pipeline:
 
-1. **Install Dependencies**:
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-2. **Run the App**:
-
-    ```bash
-    streamlit run streamlit_app.py
-    ```
-
-3. **Using the App**:
-    1. **Enter Ticker**: Type a stock symbol (e.g., `NVDA`) in the sidebar.
-    2. **Fetch & Train**: Click **"Fetch Data & Retrain Model"**.
-    3. **Wait**: The app will download latest data and train a fresh model (~30-60s).
-    4. **Analyze**: View the predicted price, technical signal, and news sentiment.
-
-## Training (Manual)
-
-The app handles training automatically, but you can also run it manually:
-
-```bash
-# Fetch data for a specific ticker
-python -c "from src.fetch_data import fetch_all_data; fetch_all_data('AAPL')"
-
-# Train model for that ticker
-python src/main.py --ticker AAPL --epochs 50
-```
+| Tool | What it does |
+| --- | --- |
+| `fetch_data` | Downloads stock + NASDAQ data via Yahoo Finance |
+| `train_model` | Trains the LSTM neural network (regression + classification heads) |
+| `predict` | Runs inference: predicted return %, direction (UP/DOWN), confidence |
+| `get_sentiment` | VADER sentiment on latest news headlines |
 
 ## Model Architecture
 
-* **Input**: 60 days of OHLCV data + Technical Indicators (RSI, MACD, BB, ROC, ATR, Stochastic Oscillator) + NASDAQ Index correlations.
-* **Model**: Multi-layer LSTM with 2 heads:
-    1. **Regression Head**: Predicts the next day's return.
-    2. **Classification Head**: Predicts the probability of the price moving UP.
+- **Input**: 60 days of OHLCV + technical indicators (RSI, MACD, Bollinger Bands, ROC, ATR, Stochastic Oscillator) + NASDAQ correlations — 17 features total
+- **Model**: 2-layer stacked LSTM (hidden size 64) with two output heads:
+  1. **Regression head** — predicts next-day return (%)
+  2. **Classification head** — predicts probability of price going UP
+
+## Directory Structure
+
+```text
+├── app.py               # Streamlit chat UI (entry point)
+├── streamlit_app.py     # Mirror of app.py for Streamlit Cloud
+├── requirements.txt     # Python dependencies
+├── src/
+│   ├── agent.py         # Agent core: tools, loop, Claude integration
+│   ├── model.py         # LSTM model definition
+│   ├── utils.py         # Feature engineering helpers
+│   ├── fetch_data.py    # Yahoo Finance data download
+│   ├── sentiment.py     # VADER sentiment analysis
+│   └── main.py          # Standalone training script
+├── data/                # CSV data files (auto-generated)
+├── checkpoints/         # Saved models and scalers (auto-generated)
+└── demo/
+    └── demo.py          # Legacy demo script
+```
+
+## Setup
+
+### 1. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Set your Anthropic API key
+
+**Option A — environment variable:**
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+**Option B — Streamlit secrets** (for Streamlit Cloud deployment):
+
+Create `.streamlit/secrets.toml`:
+
+```toml
+ANTHROPIC_API_KEY = "sk-ant-..."
+```
+
+**Option C** — paste the key directly into the sidebar when the app starts.
+
+### 3. Run the app
+
+```bash
+streamlit run app.py
+```
+
+### 4. Start chatting
+
+Try prompts like:
+
+- *"Should I buy PLTR today?"*
+- *"What is your outlook on AAPL?"*
+- *"Analyze TSLA and give me a recommendation"*
+- *"Retrain the model for MSFT with 50 epochs"*
+
+## Manual Training (optional)
+
+The agent handles everything automatically, but you can also run the pipeline manually:
+
+```bash
+# Download data
+python -c "from src.fetch_data import fetch_all_data; fetch_all_data('AAPL')"
+
+# Train model
+python src/main.py --ticker AAPL --epochs 50
+```
+
+## Disclaimer
+
+Predictions are probabilistic and for educational purposes only. This is not financial advice.
 
 ## Acknowledgments
 
-* Data sourced from Yahoo Finance.
-* Built with PyTorch.
+- Data: Yahoo Finance via `yfinance`
+- Model: PyTorch LSTM
+- Sentiment: VADER (`vaderSentiment`)
+- Agent brain: Claude (Anthropic)

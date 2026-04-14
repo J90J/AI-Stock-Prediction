@@ -6,6 +6,7 @@ vaderSentiment
 torch
 scikit-learn
 joblib
+anthropic
 
 streamlit>=1.43.0
 altair<6
