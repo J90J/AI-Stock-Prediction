@@ -39,7 +39,7 @@ def load_resources(ticker, checkpoints_dir):
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     
     model_path = checkpoints_path / f"{ticker}_lstm.pth"
-    feature_scaler_path = checkpoints_path / "feature_scaler.pkl"
+    feature_scaler_path = checkpoints_path / f"{ticker}_feature_scaler.pkl"
     
     if not model_path.exists() or not feature_scaler_path.exists():
         return None, None, None

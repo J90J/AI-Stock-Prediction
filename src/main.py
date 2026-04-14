@@ -103,8 +103,8 @@ def train_model(ticker, data_dir, output_dir, epochs=50):
     test_close_scaled = close_scaler.transform(test_close)
 
     # Save scalers
-    joblib.dump(feature_scaler, output_path / "feature_scaler.pkl")
-    joblib.dump(close_scaler, output_path / "close_scaler.pkl")
+    joblib.dump(feature_scaler, output_path / f"{ticker}_feature_scaler.pkl")
+    joblib.dump(close_scaler, output_path / f"{ticker}_close_scaler.pkl")
     print(f"Scalers saved to {output_path}")
 
     # Build Sequences

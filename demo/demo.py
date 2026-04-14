@@ -35,8 +35,8 @@ def run_demo(ticker, data_dir, checkpoints_dir, results_dir):
 
     # Check for resources
     model_path = checkpoints_path / f"{ticker}_lstm.pth"
-    feature_scaler_path = checkpoints_path / "feature_scaler.pkl"
-    # close_scaler_path = checkpoints_path / "close_scaler.pkl" 
+    feature_scaler_path = checkpoints_path / f"{ticker}_feature_scaler.pkl"
+    # close_scaler_path = checkpoints_path / f"{ticker}_close_scaler.pkl" 
     
     # We need to fetch data first if not present
     stock_path = data_path / f"{ticker}_current.csv"
