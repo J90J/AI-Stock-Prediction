@@ -147,13 +147,13 @@ with st.sidebar.expander("ℹ️ How to Use", expanded=True):
 # Main execution safely wrapped
 try:
     if st.sidebar.button("Fetch Data & Retrain Model"):
-        with st.spinner(f"Downloading {ticker} data and Retraining Model... This may take a minute."):
+        with st.spinner(f"Downloading {ticker} data and training model (30 epochs)... ~60-90 seconds."):
             try:
                 # 1. Fetch Data
                 fetch_all_data(ticker, data_dir)
                 
                 # 2. Retrain Model
-                train_model(ticker, data_dir, checkpoints_dir, epochs=50)
+                train_model(ticker, data_dir, checkpoints_dir, epochs=30)
                 
                 # 3. Clear Cache to reload new model
                 st.cache_resource.clear()

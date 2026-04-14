@@ -15,7 +15,7 @@ def fetch_all_data(ticker="PLTR", data_dir="data"):
     # 1. Target Stock
     print(f"Fetching {ticker}...")
     stock = yf.Ticker(ticker)
-    stock_hist = stock.history(period="max")
+    stock_hist = stock.history(period="5y")
     
     if stock_hist.empty:
         raise ValueError(f"No data found for ticker symbol '{ticker}'")
@@ -32,7 +32,7 @@ def fetch_all_data(ticker="PLTR", data_dir="data"):
     # 2. NASDAQ (IVIC)
     print("Fetching ^IXIC (NASDAQ)...")
     ixic = yf.Ticker("^IXIC")
-    ixic_hist = ixic.history(period="max")
+    ixic_hist = ixic.history(period="5y")
     ixic_hist = ixic_hist.reset_index()
     ixic_hist["Date"] = ixic_hist["Date"].dt.strftime("%Y-%m-%d")
 
