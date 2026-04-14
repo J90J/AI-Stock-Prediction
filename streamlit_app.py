@@ -16,27 +16,37 @@ st.markdown(
     "and synthesizes technical + sentiment signals into a recommendation."
 )
 
-# ── Sidebar ──────────────────────────────────────────────────────────────────
+# ── Sidebar ───────────────────────────────────────────────────────────────────
 st.sidebar.header("Configuration")
 data_dir        = st.sidebar.text_input("Data Directory",        "data")
 checkpoints_dir = st.sidebar.text_input("Checkpoints Directory", "checkpoints")
 
-# API key: Streamlit secrets → env var → manual input
+# Anthropic key: secrets → env var → manual input
 api_key = ""
 try:
     api_key = st.secrets["ANTHROPIC_API_KEY"]
 except Exception:
     api_key = os.environ.get("ANTHROPIC_API_KEY", "")
-
 if not api_key:
     api_key = st.sidebar.text_input(
         "Anthropic API Key", type="password", placeholder="sk-ant-..."
     )
 
-if not api_key:
+# OpenAI key (optional backup): secrets → env var → manual input
+openai_api_key = ""
+try:
+    openai_api_key = st.secrets["OPENAI_API_KEY"]
+except Exception:
+    openai_api_key = os.environ.get("OPENAI_API_KEY", "")
+if not openai_api_key:
+    openai_api_key = st.sidebar.text_input(
+        "OpenAI API Key (backup)", type="password", placeholder="sk-..."
+    )
+
+if not api_key and not openai_api_key:
     st.warning(
-        "Enter your Anthropic API key in the sidebar, "
-        "or set the `ANTHROPIC_API_KEY` environment variable / Streamlit secret."
+        "Enter at least one API key in the sidebar "
+        "(Anthropic is primary, OpenAI is the fallback)."
     )
     st.stop()
 
@@ -65,13 +75,20 @@ if prompt := st.chat_input("Ask about any stock (e.g. 'Should I buy PLTR today?'
         st.markdown(prompt)
 
     with st.chat_message("assistant"):
-        # Collect all events from the agent (blocks until done)
         with st.spinner("Agent is thinking..."):
             try:
-                events = list(run_agent(prompt, api_key, data_dir, checkpoints_dir))
+                events = list(run_agent(
+                    prompt, api_key, data_dir, checkpoints_dir,
+                    openai_api_key=openai_api_key
+                ))
             except Exception as e:
                 st.error(f"Agent error: {e}")
                 st.stop()
+
+        # Show any provider-switch notice
+        for e in events:
+            if e["type"] == "notice":
+                st.info(e["text"])
 
         # Display tool calls as expandable sections
         tool_starts = [e for e in events if e["type"] == "tool_start"]

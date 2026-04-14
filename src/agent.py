@@ -225,18 +225,9 @@ def execute_tool(tool_name: str, tool_input: dict, data_dir: str, checkpoints_di
     return {"error": f"Unknown tool: {tool_name}"}
 
 
-def run_agent(user_message: str, api_key: str, data_dir: str = "data", checkpoints_dir: str = "checkpoints"):
-    """
-    Generator that runs the stock analysis agent for a user message.
-
-    Yields dicts:
-      {"type": "tool_start", "tool": str, "input": dict}
-      {"type": "tool_end",   "tool": str, "result": dict}
-      {"type": "response",   "text": str}
-    """
+def _run_agent_anthropic(user_message: str, api_key: str, data_dir: str, checkpoints_dir: str):
     import anthropic
     client = anthropic.Anthropic(api_key=api_key)
-
     messages = [{"role": "user", "content": user_message}]
 
     while True:
@@ -255,7 +246,6 @@ def run_agent(user_message: str, api_key: str, data_dir: str = "data", checkpoin
 
         if response.stop_reason == "tool_use":
             messages.append({"role": "assistant", "content": response.content})
-
             tool_results = []
             for block in response.content:
                 if block.type == "tool_use":
@@ -267,7 +257,88 @@ def run_agent(user_message: str, api_key: str, data_dir: str = "data", checkpoin
                         "tool_use_id": block.id,
                         "content":     json.dumps(result)
                     })
-
             messages.append({"role": "user", "content": tool_results})
         else:
             break
+
+
+def _run_agent_openai(user_message: str, api_key: str, data_dir: str, checkpoints_dir: str):
+    from openai import OpenAI
+    client = OpenAI(api_key=api_key)
+
+    openai_tools = [
+        {
+            "type": "function",
+            "function": {
+                "name":        t["name"],
+                "description": t["description"],
+                "parameters":  t["input_schema"]
+            }
+        }
+        for t in TOOLS
+    ]
+
+    messages = [
+        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "user",   "content": user_message}
+    ]
+
+    while True:
+        response = client.chat.completions.create(
+            model="gpt-4o",
+            messages=messages,
+            tools=openai_tools,
+            max_tokens=2048
+        )
+
+        choice = response.choices[0]
+
+        if choice.finish_reason == "stop":
+            yield {"type": "response", "text": choice.message.content or ""}
+            break
+
+        if choice.finish_reason == "tool_calls":
+            messages.append(choice.message)
+            for tool_call in choice.message.tool_calls:
+                tool_name  = tool_call.function.name
+                tool_input = json.loads(tool_call.function.arguments)
+                yield {"type": "tool_start", "tool": tool_name, "input": tool_input}
+                result = execute_tool(tool_name, tool_input, data_dir, checkpoints_dir)
+                yield {"type": "tool_end", "tool": tool_name, "result": result}
+                messages.append({
+                    "role":         "tool",
+                    "tool_call_id": tool_call.id,
+                    "content":      json.dumps(result)
+                })
+        else:
+            break
+
+
+def run_agent(
+    user_message: str,
+    api_key: str,
+    data_dir: str = "data",
+    checkpoints_dir: str = "checkpoints",
+    openai_api_key: str = ""
+):
+    """
+    Generator that runs the stock analysis agent.
+    Tries Anthropic (Claude) first; falls back to OpenAI (GPT-4o) on
+    rate-limit or credit errors if an OpenAI key is provided.
+
+    Yields dicts:
+      {"type": "tool_start", "tool": str, "input": dict}
+      {"type": "tool_end",   "tool": str, "result": dict}
+      {"type": "notice",     "text": str}
+      {"type": "response",   "text": str}
+    """
+    try:
+        yield from _run_agent_anthropic(user_message, api_key, data_dir, checkpoints_dir)
+    except Exception as e:
+        err = str(e).lower()
+        is_recoverable = any(k in err for k in ["rate", "credit", "429", "too many", "balance"])
+        if openai_api_key and is_recoverable:
+            yield {"type": "notice", "text": "Anthropic unavailable — switching to OpenAI GPT-4o as backup."}
+            yield from _run_agent_openai(user_message, openai_api_key, data_dir, checkpoints_dir)
+        else:
+            raise
