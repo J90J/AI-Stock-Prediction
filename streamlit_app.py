@@ -24,15 +24,57 @@ st.markdown("""
     );
 }
 
-/* Title in classic terminal amber */
+/* Title in classic terminal amber, boxed like a Bloomberg panel header */
 h1 {
     font-family: 'Courier New', monospace !important;
-    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    letter-spacing: 1.5px;
     background: linear-gradient(120deg, #FFD98A, #FF9E00 55%, #C97800 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent !important;
     filter: drop-shadow(0 0 14px rgba(255, 158, 0, 0.35));
+}
+h1::after {
+    content: "\2588";
+    color: #FF9E00;
+    -webkit-text-fill-color: #FF9E00;
+    animation: cursorBlink 1s step-end infinite;
+    margin-left: 6px;
+    font-size: 0.7em;
+    vertical-align: middle;
+}
+@keyframes cursorBlink { 50% { opacity: 0; } }
+
+/* ── Ticker tape ── */
+.ticker-wrap {
+    overflow: hidden;
+    white-space: nowrap;
+    border-top: 1px solid #332815;
+    border-bottom: 1px solid #332815;
+    background: #0F0C06;
+    padding: 7px 0;
+    margin: 4px 0 22px 0;
+}
+.ticker-track {
+    display: inline-block;
+    white-space: nowrap;
+    animation: tickerScroll 32s linear infinite;
+}
+.ticker-item {
+    display: inline-block;
+    font-family: 'Courier New', monospace;
+    font-size: 0.82rem;
+    letter-spacing: 0.5px;
+    padding: 0 26px;
+    border-right: 1px solid #332815;
+}
+.ticker-item .sym { color: #D69A2D; font-weight: 700; }
+.ticker-up   { color: #4ADE80; }
+.ticker-down { color: #F87171; }
+@keyframes tickerScroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
 }
 
 /* ── Recommendation banner ── */
@@ -92,6 +134,23 @@ st.title("AI Stock Analysis Agent")
 st.caption(
     "Fetches live data · trains an LSTM · analyzes news sentiment · "
     "synthesizes a recommendation — all from a single question."
+)
+
+# ── Ticker tape (decorative, Bloomberg-style) ───────────────────────────────
+_TICKERS = [
+    ("NVDA", "+2.41%", True), ("AAPL", "-0.82%", False), ("TSLA", "+5.06%", True),
+    ("MSFT", "+1.17%", True), ("AMZN", "-1.53%", False), ("GOOGL", "+0.64%", True),
+    ("META", "+3.28%", True), ("PLTR", "-2.09%", False), ("AMD", "+1.94%", True),
+    ("NFLX", "-0.41%", False),
+]
+_ticker_items = "".join(
+    f'<span class="ticker-item"><span class="sym">{sym}</span> '
+    f'<span class="{"ticker-up" if up else "ticker-down"}">{chg}</span></span>'
+    for sym, chg, up in _TICKERS
+)
+st.markdown(
+    f'<div class="ticker-wrap"><div class="ticker-track">{_ticker_items}{_ticker_items}</div></div>',
+    unsafe_allow_html=True,
 )
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
