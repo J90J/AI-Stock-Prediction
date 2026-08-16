@@ -10,20 +10,29 @@ from src.agent import run_agent
 
 st.set_page_config(page_title="AI Stock Agent", page_icon="📈", layout="wide")
 
-# ── Global styles ─────────────────────────────────────────────────────────────
+# ── Global styles: amber-on-black Bloomberg-terminal homage ────────────────
 st.markdown("""
 <style>
-.stApp { font-family: 'Courier New', 'IBM Plex Mono', monospace; }
+.stApp {
+    font-family: 'Courier New', 'IBM Plex Mono', monospace;
+    background-image: repeating-linear-gradient(
+        180deg,
+        rgba(255,176,0,0.025) 0px,
+        rgba(255,176,0,0.025) 1px,
+        transparent 1px,
+        transparent 3px
+    );
+}
 
-/* Title in the same shiny purple/bronze gradient as jensjungs.com */
+/* Title in classic terminal amber */
 h1 {
     font-family: 'Courier New', monospace !important;
     letter-spacing: 0.5px;
-    background: linear-gradient(120deg, #E1BEE7, #7B1FA2 30%, #83502C 65%, #F1B686 100%);
+    background: linear-gradient(120deg, #FFD98A, #FF9E00 55%, #C97800 100%);
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent !important;
-    filter: drop-shadow(0 0 14px rgba(123, 31, 162, 0.35));
+    filter: drop-shadow(0 0 14px rgba(255, 158, 0, 0.35));
 }
 
 /* ── Recommendation banner ── */
@@ -41,7 +50,7 @@ h1 {
 }
 .rec-strong-buy  { background:rgba(20,60,35,0.55); color:#4ADE80; border-color:#2f9e5f; box-shadow:0 0 20px rgba(74,222,128,0.25); }
 .rec-buy         { background:rgba(20,50,35,0.4);  color:#86EFAC; border-color:#2f9e5f; }
-.rec-hold        { background:rgba(40,25,55,0.55); color:#C4A9E0; border-color:#7B1FA2; }
+.rec-hold        { background:rgba(50,38,10,0.55); color:#E0A030; border-color:#8a6218; }
 .rec-sell        { background:rgba(60,45,15,0.45); color:#FCD34D; border-color:#a3811f; }
 .rec-strong-sell { background:rgba(65,20,25,0.55); color:#F87171; border-color:#a33a3a; box-shadow:0 0 20px rgba(248,113,113,0.25); }
 
@@ -61,7 +70,7 @@ h1 {
 .pill-down     { background:rgba(65,20,25,0.5); color:#F87171; border-color:#a33a3a; }
 .pill-positive { background:rgba(20,60,35,0.5); color:#4ADE80; border-color:#2f9e5f; }
 .pill-negative { background:rgba(65,20,25,0.5); color:#F87171; border-color:#a33a3a; }
-.pill-neutral  { background:rgba(40,25,55,0.5); color:#C4A9E0; border-color:#7B1FA2; }
+.pill-neutral  { background:rgba(50,38,10,0.5); color:#E0A030; border-color:#8a6218; }
 
 /* ── Small section labels ── */
 .label {
@@ -69,12 +78,12 @@ h1 {
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 1.2px;
-    color: #B08FD1;
+    color: #D69A2D;
     margin: 0 0 4px 0;
     font-family: 'Courier New', monospace;
 }
 
-.vis-divider { border:none; border-top:1px solid #2A2438; margin:22px 0 14px 0; }
+.vis-divider { border:none; border-top:1px solid #332815; margin:22px 0 14px 0; }
 </style>
 """, unsafe_allow_html=True)
 
