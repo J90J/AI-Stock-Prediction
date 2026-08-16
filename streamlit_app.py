@@ -13,48 +13,68 @@ st.set_page_config(page_title="AI Stock Agent", page_icon="📈", layout="wide")
 # ── Global styles ─────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
+.stApp { font-family: 'Courier New', 'IBM Plex Mono', monospace; }
+
+/* Title in the same shiny purple/bronze gradient as jensjungs.com */
+h1 {
+    font-family: 'Courier New', monospace !important;
+    letter-spacing: 0.5px;
+    background: linear-gradient(120deg, #E1BEE7, #7B1FA2 30%, #83502C 65%, #F1B686 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent !important;
+    filter: drop-shadow(0 0 14px rgba(123, 31, 162, 0.35));
+}
+
 /* ── Recommendation banner ── */
 .rec-banner {
-    padding: 18px 24px;
-    border-radius: 8px;
-    margin: 16px 0 8px 0;
-    font-size: 1.35rem;
-    font-weight: 700;
-    letter-spacing: 0.4px;
+    padding: 20px 24px;
+    border-radius: 4px;
+    margin: 18px 0 10px 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    letter-spacing: 1.5px;
     text-align: center;
+    font-family: 'Courier New', monospace;
+    text-transform: uppercase;
+    border: 1px solid;
 }
-.rec-strong-buy  { background:#d1f0da; color:#155724; border:1px solid #b7dfca; }
-.rec-buy         { background:#dce8fb; color:#1a3f6f; border:1px solid #c0d7f5; }
-.rec-hold        { background:#ebebeb; color:#444;    border:1px solid #d4d4d4; }
-.rec-sell        { background:#fef3cd; color:#7a5700; border:1px solid #f5e3a0; }
-.rec-strong-sell { background:#fadadd; color:#7b1a24; border:1px solid #f1b8be; }
+.rec-strong-buy  { background:rgba(20,60,35,0.55); color:#4ADE80; border-color:#2f9e5f; box-shadow:0 0 20px rgba(74,222,128,0.25); }
+.rec-buy         { background:rgba(20,50,35,0.4);  color:#86EFAC; border-color:#2f9e5f; }
+.rec-hold        { background:rgba(40,25,55,0.55); color:#C4A9E0; border-color:#7B1FA2; }
+.rec-sell        { background:rgba(60,45,15,0.45); color:#FCD34D; border-color:#a3811f; }
+.rec-strong-sell { background:rgba(65,20,25,0.55); color:#F87171; border-color:#a33a3a; box-shadow:0 0 20px rgba(248,113,113,0.25); }
 
 /* ── Signal pills ── */
 .pill {
     display: inline-block;
-    padding: 4px 14px;
+    padding: 5px 16px;
     border-radius: 20px;
-    font-size: 0.82rem;
-    font-weight: 600;
+    font-size: 0.85rem;
+    font-weight: 700;
     white-space: nowrap;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.4px;
+    border: 1px solid;
 }
-.pill-up       { background:#d1f0da; color:#155724; }
-.pill-down     { background:#fadadd; color:#7b1a24; }
-.pill-positive { background:#d1f0da; color:#155724; }
-.pill-negative { background:#fadadd; color:#7b1a24; }
-.pill-neutral  { background:#ebebeb; color:#444;    }
+.pill-up       { background:rgba(20,60,35,0.5); color:#4ADE80; border-color:#2f9e5f; }
+.pill-down     { background:rgba(65,20,25,0.5); color:#F87171; border-color:#a33a3a; }
+.pill-positive { background:rgba(20,60,35,0.5); color:#4ADE80; border-color:#2f9e5f; }
+.pill-negative { background:rgba(65,20,25,0.5); color:#F87171; border-color:#a33a3a; }
+.pill-neutral  { background:rgba(40,25,55,0.5); color:#C4A9E0; border-color:#7B1FA2; }
 
 /* ── Small section labels ── */
 .label {
     font-size: 0.72rem;
-    font-weight: 600;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.9px;
-    color: #999;
+    letter-spacing: 1.2px;
+    color: #B08FD1;
     margin: 0 0 4px 0;
+    font-family: 'Courier New', monospace;
 }
 
-.vis-divider { border:none; border-top:1px solid #e4e4e4; margin:20px 0 12px 0; }
+.vis-divider { border:none; border-top:1px solid #2A2438; margin:22px 0 14px 0; }
 </style>
 """, unsafe_allow_html=True)
 
